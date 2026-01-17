@@ -5,3 +5,5 @@ vim.keymap.set("n", "<leader>ce", ":Copilot enable<CR>")
 vim.keymap.set("n", "<leader>cd", ":Copilot disable<CR>")
 
 vim.keymap.set("n", "<C-CR>", ":IPythonCellExecuteCell<cr>")
+
+vim.cmd("cabbrev G vertical G")

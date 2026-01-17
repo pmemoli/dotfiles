@@ -130,30 +130,19 @@ export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
 
-alias dcr='docker compose'
-alias dcrun='docker compose run --rm'
+export PATH="$HOME/.cargo/bin:$PATH"
+export PATH="$HOME/.local/share/bob/nvim-bin:$PATH"
 
+[ -f "/home/pedro/.ghcup/env" ] && . "/home/pedro/.ghcup/env" # ghcup-envexport PATH="$HOME/.ghcup/bin:$PATH"
+
+# Aliases
+alias dcrun='docker compose run --rm'
 alias load='tmuxifier s'
+alias venv='source venv/bin/activate'
 
 fcd() {
   local dir
   dir=$(find ${1:-.} -type d 2> /dev/null | fzf +m) && cd "$dir"
 }
 
-fopen() {
-    local dir_to_search="${1:-.}" # Use first argument as directory, or current directory if not provided
-    local selected_file
-
-    # Modified find command to list all files (-type f)
-    selected_file=$(find "$dir_to_search" -type f | fzf)
-
-    if [[ -n "$selected_file" ]]; then
-        xdg-open "$selected_file" & # Added '&' to run xdg-open in the background (optional, but often desired for GUI apps)
-        sleep 0.4
-        exit
-    else
-        echo "No file selected."
-    fi
-}
-export PATH="$HOME/.cargo/bin:$PATH"
-export PATH="$HOME/.local/share/bob/nvim-bin:$PATH"
+alias rg='ranger'

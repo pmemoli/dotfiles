@@ -38,6 +38,54 @@ require("lazy").setup({
 	},
 
 	{
+		"folke/flash.nvim",
+		event = "VeryLazy",
+		opts = {},
+		keys = {
+			{
+				"s",
+				mode = { "n", "x", "o" },
+				function()
+					require("flash").jump()
+				end,
+				desc = "Flash",
+			},
+			{
+				"S",
+				mode = { "n", "x", "o" },
+				function()
+					require("flash").treesitter()
+				end,
+				desc = "Flash Treesitter",
+			},
+			{
+				"r",
+				mode = "o",
+				function()
+					require("flash").remote()
+				end,
+				desc = "Remote Flash",
+			},
+			{
+				"R",
+				mode = { "o", "x" },
+				function()
+					require("flash").treesitter_search()
+				end,
+				desc = "Treesitter Search",
+			},
+			{
+				"<c-s>",
+				mode = { "c" },
+				function()
+					require("flash").toggle()
+				end,
+				desc = "Toggle Flash Search",
+			},
+		},
+	},
+
+	{
 		"stevearc/oil.nvim",
 		config = function()
 			require("oil").setup({
@@ -53,6 +101,9 @@ require("lazy").setup({
 		end,
 	},
 
+	"tpope/vim-surround",
+	"AndrewRadev/tagalong.vim",
+
 	-- Theming
 	{
 		"loctvl842/monokai-pro.nvim",
@@ -66,6 +117,11 @@ require("lazy").setup({
 		config = function()
 			require("transparent").setup({})
 		end,
+	},
+
+	-- Vim fugitive
+	{
+		"tpope/vim-fugitive",
 	},
 
 	-- Syntax and treesitter
@@ -118,7 +174,6 @@ require("lazy").setup({
 		"neovim/nvim-lspconfig",
 		dependencies = {
 			"mason-lspconfig.nvim",
-			"cmp-nvim-lsp",
 		},
 		config = function()
 			vim.opt.signcolumn = "yes"
@@ -131,21 +186,12 @@ require("lazy").setup({
 				},
 			})
 
-			vim.keymap.set("n", "gl", "<cmd>lua vim.diagnostic.open_float()<cr>")
-
-			-- Extend cmp with lsp
-			local lspconfig_defaults = require("lspconfig").util.default_config
-			lspconfig_defaults.capabilities = vim.tbl_deep_extend(
-				"force",
-				lspconfig_defaults.capabilities,
-				require("cmp_nvim_lsp").default_capabilities()
-			)
-
 			-- LSP hotkeys
 			vim.api.nvim_create_autocmd("LspAttach", {
 				desc = "LSP actions",
 				callback = function(event)
 					local opts = { buffer = event.buf }
+					vim.keymap.set("n", "gl", "<cmd>lua vim.diagnostic.open_float()<cr>")
 					vim.keymap.set("n", "K", "<cmd>lua vim.lsp.buf.hover()<cr>", opts)
 					vim.keymap.set("n", "gd", "<cmd>lua vim.lsp.buf.definition()<cr>", opts)
 					vim.keymap.set("n", "gD", "<cmd>lua vim.lsp.buf.declaration()<cr>", opts)
@@ -166,26 +212,26 @@ require("lazy").setup({
 			require("lspconfig").marksman.setup({})
 			require("lspconfig").asm_lsp.setup({})
 			require("lspconfig").ts_ls.setup({})
+			require("lspconfig").hls.setup({})
 		end,
 	},
 
 	-- Autocomplete
 	{
 		"hrsh7th/nvim-cmp",
-		dependencies = { "cmp-nvim-lsp" },
+		dependencies = { "hrsh7th/cmp-nvim-lsp" },
 		config = function()
 			local cmp = require("cmp")
 			cmp.setup({
 				sources = {
 					{ name = "nvim_lsp" },
 				},
-				snippet = {
-					expand = function(args)
-						vim.snippet.expand(args.body)
-					end,
-				},
 				mapping = cmp.mapping.preset.insert({
 					["<CR>"] = cmp.mapping.confirm({ select = true }),
+					["<C-j>"] = cmp.mapping.select_next_item(),
+					["<C-k>"] = cmp.mapping.select_prev_item(),
+					["<C-Space>"] = cmp.mapping.complete(),
+					["<C-e>"] = cmp.mapping.abort(),
 				}),
 			})
 		end,
@@ -194,38 +240,40 @@ require("lazy").setup({
 
 	-- Autoformatting
 	{
-		"jose-elias-alvarez/null-ls.nvim",
+		"stevearc/conform.nvim",
 		config = function()
-			local null_ls = require("null-ls")
-			local augroup = vim.api.nvim_create_augroup("LspFormatting", {})
-			null_ls.setup({
-				sources = {
-					null_ls.builtins.formatting.black.with({
-						extra_args = { "--line-length", "79" },
-					}),
-					null_ls.builtins.formatting.clang_format.with({
-						extra_args = { "-style={IndentWidth: 4}" },
-					}),
-					null_ls.builtins.formatting.prettier.with({
-						extra_args = { "--tab-width-2" },
-					}),
-					null_ls.builtins.formatting.stylua,
+			require("conform").setup({
+				formatters_by_ft = {
+					python = { "black" },
+					cpp = { "clang_format" },
+					c = { "clang_format" },
+					javascript = { "prettier" },
+					typescript = { "prettier" },
+					lua = { "stylua" },
+					json = { "fixjson" },
 				},
-				on_attach = function(client, bufnr)
-					if client.supports_method("textDocument/formatting") then
-						vim.api.nvim_clear_autocmds({ group = augroup, buffer = bufnr })
-						vim.api.nvim_create_autocmd("BufWritePre", {
-							group = augroup,
-							buffer = bufnr,
-							callback = function()
-								vim.lsp.buf.format()
-							end,
-						})
-					end
-				end,
+				format_on_save = {
+					lsp_fallback = true,
+					async = false,
+					timeout_ms = 1000,
+				},
 			})
 
-			vim.keymap.set("n", "<leader>af", ":lua vim.lsp.buf.format()<cr>")
+			-- Custom formatter settings
+			require("conform").formatters.black = {
+				prepend_args = { "--line-length", "79" },
+			}
+			require("conform").formatters.clang_format = {
+				prepend_args = { "-style={IndentWidth: 4}" },
+			}
+			require("conform").formatters.prettier = {
+				prepend_args = { "--tab-width", "2" },
+			}
+
+			-- Keymap for manual formatting
+			vim.keymap.set("n", "<leader>af", function()
+				require("conform").format({ async = true, lsp_fallback = true })
+			end, { desc = "Format file" })
 		end,
 	},
 
@@ -242,13 +290,6 @@ require("lazy").setup({
 	"mg979/vim-visual-multi",
 
 	-- TMUX integration
-	{
-		"aserowy/tmux.nvim",
-		config = function()
-			require("tmux").setup()
-		end,
-	},
-
 	"christoomey/vim-tmux-navigator",
 
 	-- Slime
@@ -264,7 +305,7 @@ require("lazy").setup({
 		"hanschen/vim-ipython-cell",
 		config = function()
 			vim.g.slime_python_ipython = 1
-			vim.keymap.set("n", "<C-CR>", ":IPythonCellExecuteCellVerbose<cr>")
+			vim.keymap.set("n", "<C-CR>", ":IPythonCellExecuteCell<cr>")
 		end,
 	},
 })
